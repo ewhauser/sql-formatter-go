@@ -7,14 +7,16 @@ import (
 type SqlLanguage string
 
 const (
+	LanguageSQL        SqlLanguage = "sql"
 	LanguagePostgresql SqlLanguage = "postgresql"
 )
 
 var dialectNameMap = map[SqlLanguage]DialectOptions{
+	LanguageSQL:        PostgresqlDialect,
 	LanguagePostgresql: PostgresqlDialect,
 }
 
-var supportedDialects = []string{"postgresql"}
+var supportedDialects = []string{"postgresql", "sql"}
 
 var defaultOptions = FormatOptions{
 	TabWidth:               2,

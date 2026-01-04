@@ -355,7 +355,7 @@ func (p *Parser) parseAtomicExpression() (AstNode, bool, error) {
 			return node, ok, err
 		}
 		base = node
-		goto propertyAccess
+		goto arraySuffix
 	}
 	// parenthesis or brackets
 	if p.peek().Type == TokenOpenParen {
@@ -395,16 +395,30 @@ func (p *Parser) parseAtomicExpression() (AstNode, bool, error) {
 	if p.peek().Type == TokenReservedDataType || p.peek().Type == TokenReservedDataTypePhrase {
 		tok := p.consume()
 		base = &DataTypeNode{Type: NodeDataType, Text: tok.Text, Raw: tok.Raw}
-		goto propertyAccess
+		goto arraySuffix
 	}
 	// keyword
 	if p.peek().Type == TokenReservedKeyword || p.peek().Type == TokenReservedKeywordPhrase || p.peek().Type == TokenReservedJoin {
 		tok := p.consume()
 		base = &KeywordNode{Type: NodeKeyword, TokenType: tok.Type, Text: tok.Text, Raw: tok.Raw}
-		goto propertyAccess
+		goto arraySuffix
 	}
 
 	return nil, false, nil
+
+arraySuffix:
+	if base == nil {
+		return nil, false, nil
+	}
+	if _, ok := base.(*ParameterizedDataTypeNode); ok {
+		if p.peek().Type == TokenOpenParen && p.peek().Text == "[" {
+			parens, err := p.parseSquareBrackets()
+			if err != nil {
+				return nil, false, err
+			}
+			base = &ArraySubscriptNode{Type: NodeArraySubscript, Array: base, Parenthesis: *parens}
+		}
+	}
 
 propertyAccess:
 	if base == nil {

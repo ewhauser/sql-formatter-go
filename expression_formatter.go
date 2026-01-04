@@ -114,10 +114,16 @@ func (f *ExpressionFormatter) formatParameterizedDataType(node *ParameterizedDat
 }
 
 func (f *ExpressionFormatter) formatArraySubscript(node *ArraySubscriptNode) {
-	var formattedArray string
+	var (
+		formattedArray     string
+		spaceBeforeBracket bool
+	)
 	switch arr := node.Array.(type) {
 	case *DataTypeNode:
 		formattedArray = f.showDataType(arr)
+	case *ParameterizedDataTypeNode:
+		formattedArray = f.showParameterizedDataTypeInline(arr)
+		spaceBeforeBracket = true
 	case *KeywordNode:
 		formattedArray = f.showKw(arr)
 	case *IdentifierNode:
@@ -126,9 +132,24 @@ func (f *ExpressionFormatter) formatArraySubscript(node *ArraySubscriptNode) {
 		formattedArray = ""
 	}
 	f.withComments(node.Array, func() {
+		if spaceBeforeBracket {
+			f.layout.Add(formattedArray, Space)
+			return
+		}
 		f.layout.Add(formattedArray)
 	})
 	f.formatNode(&node.Parenthesis)
+}
+
+func (f *ExpressionFormatter) showParameterizedDataTypeInline(node *ParameterizedDataTypeNode) string {
+	inlineLayout := f.formatInlineExpression([]AstNode{node})
+	if inlineLayout != nil {
+		return strings.TrimRight(inlineLayout.ToString(), " ")
+	}
+	layout := NewLayout(NewIndentation(f.layout.GetIndentation().GetSingleIndent()))
+	formatter := NewExpressionFormatter(ExpressionFormatterParams{Cfg: f.cfg, DialectCfg: f.dialectCfg, Params: f.params, Layout: layout, Inline: true})
+	formatter.Format([]AstNode{node})
+	return strings.TrimRight(layout.ToString(), " ")
 }
 
 func (f *ExpressionFormatter) formatPropertyAccess(node *PropertyAccessNode) {

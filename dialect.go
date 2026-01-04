@@ -1,23 +1,26 @@
 package sqlformatter
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type DialectFormatOptions struct {
-	AlwaysDenseOperators []string
-	OnelineClauses       []string
+	AlwaysDenseOperators  []string
+	OnelineClauses        []string
 	TabularOnelineClauses []string
 }
 
 type ProcessedDialectFormatOptions struct {
-	AlwaysDenseOperators []string
-	OnelineClauses       map[string]bool
+	AlwaysDenseOperators  []string
+	OnelineClauses        map[string]bool
 	TabularOnelineClauses map[string]bool
 }
 
 type DialectOptions struct {
-	Name           string
+	Name             string
 	TokenizerOptions TokenizerOptions
-	FormatOptions  DialectFormatOptions
+	FormatOptions    DialectFormatOptions
 }
 
 type Dialect struct {
@@ -27,15 +30,24 @@ type Dialect struct {
 
 var dialectCache sync.Map
 
+func dialectCacheKey(options DialectOptions) string {
+	if options.Name != "" {
+		return options.Name
+	}
+	// Fallback to pointer identity for unnamed/custom dialects.
+	return fmt.Sprintf("custom:%p", &options)
+}
+
 func CreateDialect(options DialectOptions) *Dialect {
-	if cached, ok := dialectCache.Load(&options); ok {
+	key := dialectCacheKey(options)
+	if cached, ok := dialectCache.Load(key); ok {
 		return cached.(*Dialect)
 	}
 	dialect := &Dialect{
 		Tokenizer:     NewTokenizer(options.TokenizerOptions, options.Name),
 		FormatOptions: processDialectFormatOptions(options.FormatOptions),
 	}
-	dialectCache.Store(&options, dialect)
+	dialectCache.Store(key, dialect)
 	return dialect
 }
 
@@ -56,8 +68,8 @@ func processDialectFormatOptions(options DialectFormatOptions) ProcessedDialectF
 		}
 	}
 	return ProcessedDialectFormatOptions{
-		AlwaysDenseOperators: options.AlwaysDenseOperators,
-		OnelineClauses:       oneline,
+		AlwaysDenseOperators:  options.AlwaysDenseOperators,
+		OnelineClauses:        oneline,
 		TabularOnelineClauses: tabular,
 	}
 }

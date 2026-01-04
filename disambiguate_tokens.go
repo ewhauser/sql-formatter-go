@@ -1,14 +1,12 @@
 package sqlformatter
 
 func DisambiguateTokens(tokens []Token) []Token {
-	out := make([]Token, len(tokens))
-	copy(out, tokens)
-	out = mapTokens(out, propertyNameKeywordToIdent)
-	out = mapTokens(out, funcNameToIdent)
-	out = mapTokens(out, dataTypeToParameterizedDataType)
-	out = mapTokens(out, identToArrayIdent)
-	out = mapTokens(out, dataTypeToArrayKeyword)
-	return out
+	mapTokensInPlace(tokens, propertyNameKeywordToIdent)
+	mapTokensInPlace(tokens, funcNameToIdent)
+	mapTokensInPlace(tokens, dataTypeToParameterizedDataType)
+	mapTokensInPlace(tokens, identToArrayIdent)
+	mapTokensInPlace(tokens, dataTypeToArrayKeyword)
+	return tokens
 }
 
 func mapTokens(tokens []Token, fn func(Token, int, []Token) Token) []Token {
@@ -17,6 +15,12 @@ func mapTokens(tokens []Token, fn func(Token, int, []Token) Token) []Token {
 		out[i] = fn(token, i, tokens)
 	}
 	return out
+}
+
+func mapTokensInPlace(tokens []Token, fn func(Token, int, []Token) Token) {
+	for i := range tokens {
+		tokens[i] = fn(tokens[i], i, tokens)
+	}
 }
 
 func propertyNameKeywordToIdent(token Token, i int, tokens []Token) Token {
@@ -42,7 +46,7 @@ func funcNameToIdent(token Token, i int, tokens []Token) Token {
 }
 
 func dataTypeToParameterizedDataType(token Token, i int, tokens []Token) Token {
-	if token.Type == TokenReservedDataType {
+	if token.Type == TokenReservedDataType || token.Type == TokenReservedDataTypePhrase {
 		next := nextNonCommentToken(tokens, i)
 		if next.Type != "" && isOpenParen(next) {
 			token.Type = TokenReservedParameterizedDataType
