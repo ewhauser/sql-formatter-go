@@ -3,6 +3,7 @@ package sqlformatter
 func DisambiguateTokens(tokens []Token) []Token {
 	mapTokensInPlace(tokens, propertyNameKeywordToIdent)
 	mapTokensInPlace(tokens, funcNameToIdent)
+	mapTokensInPlace(tokens, clauseAfterJoinToIdent)
 	mapTokensInPlace(tokens, dataTypeToParameterizedDataType)
 	mapTokensInPlace(tokens, identToArrayIdent)
 	mapTokensInPlace(tokens, dataTypeToArrayKeyword)
@@ -39,6 +40,19 @@ func funcNameToIdent(token Token, i int, tokens []Token) Token {
 	if token.Type == TokenReservedFunctionName {
 		next := nextNonCommentToken(tokens, i)
 		if next.Type == "" || !isOpenParen(next) {
+			return Token{Type: TokenIdentifier, Raw: token.Raw, Text: token.Raw, Start: token.Start, PrecedingWhitespace: token.PrecedingWhitespace}
+		}
+	}
+	return token
+}
+
+// clauseAfterJoinToIdent converts clause tokens to identifiers when they appear
+// right after a JOIN keyword. This handles cases like "LEFT JOIN comment ON ..."
+// where "comment" is a table name, not the start of "COMMENT ON" clause.
+func clauseAfterJoinToIdent(token Token, i int, tokens []Token) Token {
+	if token.Type == TokenReservedClause {
+		prev := prevNonCommentToken(tokens, i)
+		if prev.Type == TokenReservedJoin {
 			return Token{Type: TokenIdentifier, Raw: token.Raw, Text: token.Raw, Start: token.Start, PrecedingWhitespace: token.PrecedingWhitespace}
 		}
 	}

@@ -23,6 +23,7 @@ func main() {
 	output := fs.String("output", "", "File to write SQL output (defaults to stdout)")
 	outputShort := fs.String("o", "", "File to write SQL output (defaults to stdout)")
 	fix := fs.Bool("fix", false, "Update the file in-place")
+	check := fs.Bool("check", false, "Check if files are formatted (exit 1 if not)")
 	lang := fs.String("language", "sql", "SQL dialect (defaults to basic sql)")
 	langShort := fs.String("l", "", "SQL dialect (defaults to basic sql)")
 	config := fs.String("config", "", "Path to config JSON file or json string (will find a file named '.sql-formatter.json' or use default configs if unspecified)")
@@ -41,6 +42,7 @@ func main() {
 		fmt.Fprintln(fs.Output(), "  -o, --output    OUTPUT")
 		fmt.Fprintln(fs.Output(), "                    File to write SQL output (defaults to stdout)")
 		fmt.Fprintln(fs.Output(), "  --fix           Update the file in-place")
+		fmt.Fprintln(fs.Output(), "  --check         Check if files are formatted (exit 1 if not)")
 		fmt.Fprintln(fs.Output(), "  -l, --language  {postgresql,sql}")
 		fmt.Fprintln(fs.Output(), "                    SQL dialect (defaults to basic sql)")
 		fmt.Fprintln(fs.Output(), "  -c, --config    CONFIG")
@@ -74,8 +76,20 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: Cannot use both --output and --fix options simultaneously")
 		os.Exit(1)
 	}
+	if *check && *fix {
+		fmt.Fprintln(os.Stderr, "Error: Cannot use both --check and --fix options simultaneously")
+		os.Exit(1)
+	}
+	if *check && *output != "" {
+		fmt.Fprintln(os.Stderr, "Error: Cannot use both --check and --output options simultaneously")
+		os.Exit(1)
+	}
 	if *fix && len(files) == 0 {
 		fmt.Fprintln(os.Stderr, "Error: The --fix option cannot be used without a filename")
+		os.Exit(1)
+	}
+	if *check && len(files) == 0 {
+		fmt.Fprintln(os.Stderr, "Error: The --check option cannot be used without a filename")
 		os.Exit(1)
 	}
 	if *output != "" && len(files) > 1 {
@@ -123,7 +137,7 @@ func main() {
 		return
 	}
 
-	runMultiFile(files, cfg, *fix, *output, *workers)
+	runMultiFile(files, cfg, *fix, *check, *output, *workers)
 }
 
 func isTTY(f *os.File) bool {
@@ -152,7 +166,7 @@ func readInput(file string) (string, error) {
 	return string(data), nil
 }
 
-func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fix bool, output string, workers int) {
+func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fix bool, check bool, output string, workers int) {
 	workerCount := workers
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
@@ -161,10 +175,11 @@ func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fi
 		}
 	}
 	type result struct {
-		index int
-		text  string
-		err   error
-		file  string
+		index     int
+		text      string
+		err       error
+		file      string
+		different bool // for check mode: true if file differs from formatted
 	}
 
 	jobs := make(chan int, len(files))
@@ -189,6 +204,11 @@ func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fi
 					continue
 				}
 				formatted = strings.TrimSpace(formatted) + "\n"
+				if check {
+					different := string(data) != formatted
+					results <- result{index: idx, file: path, different: different}
+					continue
+				}
 				if fix {
 					if err := os.WriteFile(path, []byte(formatted), 0o644); err != nil {
 						results <- result{index: idx, err: fmt.Errorf("Error: could not write file %s", path), file: path}
@@ -211,17 +231,29 @@ func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fi
 	close(results)
 
 	out := make([]string, len(files))
+	var checkFailed int64
 	for res := range results {
 		if res.err != nil {
 			atomic.AddInt64(&failed, 1)
 			fmt.Fprintln(os.Stderr, res.err.Error())
 			continue
 		}
+		if check && res.different {
+			atomic.AddInt64(&checkFailed, 1)
+			fmt.Fprintf(os.Stderr, "%s\n", res.file)
+		}
 		out[res.index] = res.text
 	}
 
 	if failed > 0 {
 		os.Exit(1)
+	}
+
+	if check {
+		if checkFailed > 0 {
+			os.Exit(1)
+		}
+		return
 	}
 
 	if fix {

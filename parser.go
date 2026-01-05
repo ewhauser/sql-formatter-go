@@ -470,6 +470,18 @@ func (p *Parser) parsePropertyAccessProperty() (AstNode, error) {
 		return node, nil
 	case TokenIdentifier, TokenQuotedIdentifier, TokenVariable:
 		p.consume()
+		// Check if this is a function call (identifier followed by open paren)
+		next, commentCount := p.peekAfterComments()
+		if next.Type == TokenOpenParen {
+			trailing := p.consumeComments(commentCount)
+			nameKw := KeywordNode{Type: NodeKeyword, TokenType: tok.Type, Text: tok.Text, Raw: tok.Raw}
+			nameKw = addTrailingCommentsKeyword(nameKw, trailing)
+			parens, err := p.parseParenthesis()
+			if err != nil {
+				return nil, err
+			}
+			return &FunctionCallNode{Type: NodeFunctionCall, NameKw: nameKw, Parenthesis: *parens}, nil
+		}
 		quoted := tok.Type != TokenIdentifier
 		return &IdentifierNode{Type: NodeIdentifier, Quoted: quoted, Text: tok.Text}, nil
 	case TokenNamedParameter, TokenQuotedParameter, TokenNumberedParameter, TokenPositionalParameter, TokenCustomParameter:
