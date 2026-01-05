@@ -4,6 +4,7 @@ func DisambiguateTokens(tokens []Token) []Token {
 	mapTokensInPlace(tokens, propertyNameKeywordToIdent)
 	mapTokensInPlace(tokens, funcNameToIdent)
 	mapTokensInPlace(tokens, clauseAfterJoinToIdent)
+	mapTokensInPlace(tokens, sqlcFunctionToReservedFunctionName)
 	mapTokensInPlace(tokens, dataTypeToParameterizedDataType)
 	mapTokensInPlace(tokens, identToArrayIdent)
 	mapTokensInPlace(tokens, dataTypeToArrayKeyword)
@@ -57,6 +58,47 @@ func clauseAfterJoinToIdent(token Token, i int, tokens []Token) Token {
 		}
 	}
 	return token
+}
+
+// sqlcFunctionToReservedFunctionName converts identifiers to reserved function names
+// when they appear in the pattern `sqlc.identifier(`. This handles sqlc helper
+// functions like sqlc.arg(), sqlc.narg(), sqlc.embed(), etc.
+// Without this, "sqlc.arg(foo)" would be formatted as "sqlc.arg (foo)".
+func sqlcFunctionToReservedFunctionName(token Token, i int, tokens []Token) Token {
+	if token.Type != TokenIdentifier {
+		return token
+	}
+	// Check if this identifier is followed by open paren
+	next := nextNonCommentToken(tokens, i)
+	if !isOpenParen(next) {
+		return token
+	}
+	// Check if the previous token is property access operator
+	propAccessIdx := findPrevNonComment(tokens, i)
+	if propAccessIdx < 0 || tokens[propAccessIdx].Type != TokenPropertyAccessOperator {
+		return token
+	}
+	// Check if the token before the property access operator is "sqlc"
+	sqlcIdx := findPrevNonComment(tokens, propAccessIdx)
+	if sqlcIdx < 0 {
+		return token
+	}
+	sqlcToken := tokens[sqlcIdx]
+	if sqlcToken.Type != TokenIdentifier || (sqlcToken.Text != "sqlc" && sqlcToken.Text != "SQLC") {
+		return token
+	}
+	// This is a sqlc function call - convert to reserved function name
+	return Token{Type: TokenReservedFunctionName, Raw: token.Raw, Text: token.Text, Start: token.Start, PrecedingWhitespace: token.PrecedingWhitespace}
+}
+
+// findPrevNonComment returns the index of the previous non-comment token, or -1 if not found
+func findPrevNonComment(tokens []Token, index int) int {
+	for i := index - 1; i >= 0; i-- {
+		if !isComment(tokens[i]) {
+			return i
+		}
+	}
+	return -1
 }
 
 func dataTypeToParameterizedDataType(token Token, i int, tokens []Token) Token {

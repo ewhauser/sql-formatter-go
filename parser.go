@@ -468,20 +468,15 @@ func (p *Parser) parsePropertyAccessProperty() (AstNode, error) {
 			return nil, fmt.Errorf("Parse error: Invalid SQL")
 		}
 		return node, nil
+	case TokenReservedFunctionName:
+		// Handle function calls in property access (e.g., sqlc.arg())
+		node, ok, err := p.parseFunctionCall()
+		if err != nil || !ok {
+			return nil, fmt.Errorf("Parse error: Invalid SQL")
+		}
+		return node, nil
 	case TokenIdentifier, TokenQuotedIdentifier, TokenVariable:
 		p.consume()
-		// Check if this is a function call (identifier followed by open paren)
-		next, commentCount := p.peekAfterComments()
-		if next.Type == TokenOpenParen {
-			trailing := p.consumeComments(commentCount)
-			nameKw := KeywordNode{Type: NodeKeyword, TokenType: tok.Type, Text: tok.Text, Raw: tok.Raw}
-			nameKw = addTrailingCommentsKeyword(nameKw, trailing)
-			parens, err := p.parseParenthesis()
-			if err != nil {
-				return nil, err
-			}
-			return &FunctionCallNode{Type: NodeFunctionCall, NameKw: nameKw, Parenthesis: *parens}, nil
-		}
 		quoted := tok.Type != TokenIdentifier
 		return &IdentifierNode{Type: NodeIdentifier, Quoted: quoted, Text: tok.Text}, nil
 	case TokenNamedParameter, TokenQuotedParameter, TokenNumberedParameter, TokenPositionalParameter, TokenCustomParameter:
