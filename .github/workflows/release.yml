@@ -6,12 +6,13 @@ on:
       - "v*"
   workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -31,12 +32,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25"
+          cache: false
 
       - name: Build
         env:
@@ -56,7 +60,7 @@ jobs:
           rm "dist/${BIN_NAME}"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dist-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*.tar.gz
@@ -64,9 +68,11 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist
           pattern: dist-*
@@ -75,12 +81,17 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum *.tar.gz > checksums.txt
+          sha256sum ./*.tar.gz > checksums.txt
 
       - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: |
-            dist/*.tar.gz
-            dist/checksums.txt
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          ASSETS=(./dist/*.tar.gz ./dist/checksums.txt)
+          if gh release view "${VERSION}" >/dev/null 2>&1; then
+            gh release upload "${VERSION}" "${ASSETS[@]}" --clobber
+          else
+            gh release create "${VERSION}" "${ASSETS[@]}" --generate-notes --target "${GITHUB_SHA}"
+          fi
