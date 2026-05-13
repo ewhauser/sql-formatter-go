@@ -82,8 +82,8 @@ func (t *Tokenizer) buildRulesAfterParams(cfg TokenizerOptions) []TokenRule {
 	}
 	rules = append(rules, TokenRule{Type: TokenString, Regex: NewQuoteMatcher(cfg.StringTypes)})
 	rules = append(rules, TokenRule{Type: TokenIdentifier, Regex: NewIdentifierMatcher(cfg.IdentChars)})
-	rules = append(rules, TokenRule{Type: TokenDelimiter, Regex: &RegexMatcher{re: newRegexpWrapper(regexp.MustCompile(`^;`))}})
-	rules = append(rules, TokenRule{Type: TokenComma, Regex: &RegexMatcher{re: newRegexpWrapper(regexp.MustCompile(`^,`))}})
+	rules = append(rules, TokenRule{Type: TokenDelimiter, Regex: ByteMatcher(';')})
+	rules = append(rules, TokenRule{Type: TokenComma, Regex: ByteMatcher(',')})
 	rules = append(rules, TokenRule{Type: TokenOpenParen, Regex: NewParenMatcher(true, cfg.ExtraParens)})
 	rules = append(rules, TokenRule{Type: TokenCloseParen, Regex: NewParenMatcher(false, cfg.ExtraParens)})
 	ops := []string{"+", "-", "/", ">", "<", "=", "<>", "<=", ">=", "!="}
@@ -91,7 +91,7 @@ func (t *Tokenizer) buildRulesAfterParams(cfg TokenizerOptions) []TokenRule {
 		ops = append(ops, cfg.Operators...)
 	}
 	rules = append(rules, TokenRule{Type: TokenOperator, Regex: NewOperatorMatcher(ops)})
-	rules = append(rules, TokenRule{Type: TokenAsterisk, Regex: &RegexMatcher{re: newRegexpWrapper(regexp.MustCompile(`^\*`))}})
+	rules = append(rules, TokenRule{Type: TokenAsterisk, Regex: ByteMatcher('*')})
 	propertyOps := []string{"."}
 	if len(cfg.PropertyAccessOperators) > 0 {
 		propertyOps = append(propertyOps, cfg.PropertyAccessOperators...)

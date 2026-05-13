@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/pprof"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -30,12 +31,14 @@ func main() {
 	configShort := fs.String("c", "", "Path to config JSON file or json string (will find a file named '.sql-formatter.json' or use default configs if unspecified)")
 	showVersion := fs.Bool("version", false, "show program's version number and exit")
 	workers := fs.Int("workers", 0, "number of concurrent workers for multiple files (0 = NumCPU)")
+	cpuProfile := fs.String("cpuprofile", "", "write CPU profile to file")
+	allocProfile := fs.String("allocprofile", "", "write allocation profile to file")
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "usage: %s [-h] [-o OUTPUT] [-l {postgresql,sql}] [-c CONFIG] [--version] [FILE...]\n\n", os.Args[0])
 		fmt.Fprintln(fs.Output(), "SQL Formatter")
 		fmt.Fprintln(fs.Output())
 		fmt.Fprintln(fs.Output(), "positional arguments:")
-		fmt.Fprintln(fs.Output(), "  FILE            Input SQL file(s) (defaults to stdin)")
+		fmt.Fprintln(fs.Output(), "  FILE            Input SQL file(s) or directories (defaults to stdin)")
 		fmt.Fprintln(fs.Output())
 		fmt.Fprintln(fs.Output(), "optional arguments:")
 		fmt.Fprintln(fs.Output(), "  -h, --help      show this help message and exit")
@@ -48,6 +51,8 @@ func main() {
 		fmt.Fprintln(fs.Output(), "  -c, --config    CONFIG")
 		fmt.Fprintln(fs.Output(), "                    Path to config JSON file or json string (will find a file named '.sql-formatter.json' or use default configs if unspecified)")
 		fmt.Fprintln(fs.Output(), "  --workers       number of concurrent workers for multiple files (0 = NumCPU)")
+		fmt.Fprintln(fs.Output(), "  --cpuprofile    write CPU profile to file")
+		fmt.Fprintln(fs.Output(), "  --allocprofile  write allocation profile to file")
 		fmt.Fprintln(fs.Output(), "  --version       show program's version number and exit")
 	}
 
@@ -60,6 +65,9 @@ func main() {
 		return
 	}
 
+	cleanupProfile := startProfiling(*cpuProfile, *allocProfile)
+	defer cleanupProfile()
+
 	files := fs.Args()
 
 	if *output == "" && *outputShort != "" {
@@ -70,6 +78,13 @@ func main() {
 	}
 	if *lang == "sql" && *langShort != "" {
 		*lang = *langShort
+	}
+
+	var err error
+	files, err = expandInputFiles(files)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 
 	if *output != "" && *fix {
@@ -137,7 +152,88 @@ func main() {
 		return
 	}
 
-	runMultiFile(files, cfg, *fix, *check, *output, *workers)
+	runMultiFile(files, cfg, *fix, *check, *output, *workers, cleanupProfile)
+}
+
+func startProfiling(cpuPath, allocPath string) func() {
+	if allocPath != "" {
+		runtime.MemProfileRate = 1
+	}
+
+	var cpuFile *os.File
+	if cpuPath != "" {
+		f, err := os.Create(cpuPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: could not create CPU profile %s: %v\n", cpuPath, err)
+			os.Exit(1)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			_ = f.Close()
+			fmt.Fprintf(os.Stderr, "Error: could not start CPU profile %s: %v\n", cpuPath, err)
+			os.Exit(1)
+		}
+		cpuFile = f
+	}
+
+	var allocFile *os.File
+	if allocPath != "" {
+		f, err := os.Create(allocPath)
+		if err != nil {
+			if cpuFile != nil {
+				pprof.StopCPUProfile()
+				_ = cpuFile.Close()
+			}
+			fmt.Fprintf(os.Stderr, "Error: could not create allocation profile %s: %v\n", allocPath, err)
+			os.Exit(1)
+		}
+		allocFile = f
+	}
+
+	return func() {
+		if cpuFile != nil {
+			pprof.StopCPUProfile()
+			_ = cpuFile.Close()
+		}
+		if allocFile != nil {
+			runtime.GC()
+			if profile := pprof.Lookup("allocs"); profile != nil {
+				if err := profile.WriteTo(allocFile, 0); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: could not write allocation profile: %v\n", err)
+				}
+			}
+			_ = allocFile.Close()
+		}
+	}
+}
+
+func expandInputFiles(files []string) ([]string, error) {
+	expanded := make([]string, 0, len(files))
+	for _, path := range files {
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, fmt.Errorf("Error: could not open file %s", path)
+		}
+		if !info.IsDir() {
+			expanded = append(expanded, path)
+			continue
+		}
+		err = filepath.WalkDir(path, func(child string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			if strings.EqualFold(filepath.Ext(child), ".sql") {
+				expanded = append(expanded, child)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Error: could not walk directory %s: %w", path, err)
+		}
+	}
+	return expanded, nil
 }
 
 func isTTY(f *os.File) bool {
@@ -166,7 +262,7 @@ func readInput(file string) (string, error) {
 	return string(data), nil
 }
 
-func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fix bool, check bool, output string, workers int) {
+func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fix bool, check bool, output string, workers int, cleanupProfile func()) {
 	workerCount := workers
 	if workerCount <= 0 {
 		workerCount = runtime.NumCPU()
@@ -198,7 +294,8 @@ func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fi
 					results <- result{index: idx, err: fmt.Errorf("Error: could not open file %s", path), file: path}
 					continue
 				}
-				formatted, err := sqlformatter.Format(string(data), cfg)
+				query := string(data)
+				formatted, err := sqlformatter.Format(query, cfg)
 				if err != nil {
 					results <- result{index: idx, err: err, file: path}
 					continue
@@ -210,6 +307,10 @@ func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fi
 					continue
 				}
 				if fix {
+					if query == formatted {
+						results <- result{index: idx, text: "", file: path}
+						continue
+					}
 					if err := os.WriteFile(path, []byte(formatted), 0o644); err != nil {
 						results <- result{index: idx, err: fmt.Errorf("Error: could not write file %s", path), file: path}
 						continue
@@ -246,11 +347,13 @@ func runMultiFile(files []string, cfg sqlformatter.FormatOptionsWithLanguage, fi
 	}
 
 	if failed > 0 {
+		cleanupProfile()
 		os.Exit(1)
 	}
 
 	if check {
 		if checkFailed > 0 {
+			cleanupProfile()
 			os.Exit(1)
 		}
 		return

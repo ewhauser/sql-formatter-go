@@ -23,6 +23,15 @@ func (m *RegexMatcher) Match(input string, index int) (string, bool) {
 	return m.re.MatchAt(input, index)
 }
 
+type ByteMatcher byte
+
+func (m ByteMatcher) Match(input string, index int) (string, bool) {
+	if index < len(input) && input[index] == byte(m) {
+		return input[index : index+1], true
+	}
+	return "", false
+}
+
 type TokenRule struct {
 	Type  TokenType
 	Regex Matcher
@@ -44,7 +53,7 @@ func NewTokenizerEngine(rules []TokenRule, dialectName string) *TokenizerEngine 
 func (t *TokenizerEngine) Tokenize(input string) ([]Token, error) {
 	t.input = input
 	t.index = 0
-	var tokens []Token
+	tokens := make([]Token, 0, estimatedTokenCapacity(input))
 
 	for t.index < len(t.input) {
 		precedingWhitespace := t.getWhitespace()
@@ -59,6 +68,17 @@ func (t *TokenizerEngine) Tokenize(input string) ([]Token, error) {
 		tokens = append(tokens, token)
 	}
 	return tokens, nil
+}
+
+func estimatedTokenCapacity(input string) int {
+	if len(input) == 0 {
+		return 0
+	}
+	estimate := len(input) / 4
+	if estimate < 8 {
+		return 8
+	}
+	return estimate
 }
 
 func (t *TokenizerEngine) createParseError() error {
