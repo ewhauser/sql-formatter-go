@@ -10,8 +10,8 @@ type IdentChars struct {
 type PlainQuoteType string
 
 type PrefixedQuoteType struct {
-	Quote        PlainQuoteType
-	Prefixes     []string
+	Quote         PlainQuoteType
+	Prefixes      []string
 	RequirePrefix bool
 }
 
@@ -37,28 +37,28 @@ type CustomParameter struct {
 }
 
 type TokenizerOptions struct {
-	ReservedSelect            []string
-	ReservedClauses           []string
-	SupportsXor               bool
-	ReservedSetOperations     []string
-	ReservedJoins             []string
-	ReservedKeywordPhrases    []string
-	ReservedDataTypePhrases   []string
-	ReservedFunctionNames     []string
-	ReservedDataTypes         []string
-	ReservedKeywords          []string
-	StringTypes               []QuoteType
-	IdentTypes                []QuoteType
-	VariableTypes             []VariableType
-	ExtraParens               []string
-	ParamTypes                *ParamTypes
-	LineCommentTypes          []string
-	NestedBlockComments       bool
-	IdentChars                *IdentChars
-	ParamChars                *IdentChars
-	Operators                 []string
-	PropertyAccessOperators   []string
-	OperatorKeyword           bool
-	UnderscoresInNumbers      bool
-	PostProcess               func(tokens []Token) []Token
+	ReservedSelect          []string
+	ReservedClauses         []string
+	SupportsXor             bool
+	ReservedSetOperations   []string
+	ReservedJoins           []string
+	ReservedKeywordPhrases  []string
+	ReservedDataTypePhrases []string
+	ReservedFunctionNames   []string
+	ReservedDataTypes       []string
+	ReservedKeywords        []string
+	StringTypes             []QuoteType
+	IdentTypes              []QuoteType
+	VariableTypes           []VariableType
+	ExtraParens             []string
+	ParamTypes              *ParamTypes
+	LineCommentTypes        []string
+	NestedBlockComments     bool
+	IdentChars              *IdentChars
+	ParamChars              *IdentChars
+	Operators               []string
+	PropertyAccessOperators []string
+	OperatorKeyword         bool
+	UnderscoresInNumbers    bool
+	PostProcess             func(tokens []Token) []Token
 }

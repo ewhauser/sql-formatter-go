@@ -3,8 +3,8 @@ package sqlformatter
 import "testing"
 
 type createTableConfig struct {
-	OrReplace    bool
-	IfNotExists  bool
+	OrReplace     bool
+	IfNotExists   bool
 	ColumnComment bool
 	TableComment  bool
 }

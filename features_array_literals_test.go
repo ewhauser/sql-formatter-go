@@ -3,7 +3,7 @@ package sqlformatter
 import "testing"
 
 type arrayLiteralConfig struct {
-	WithArrayPrefix   bool
+	WithArrayPrefix    bool
 	WithoutArrayPrefix bool
 }
 

@@ -7,7 +7,7 @@ import (
 )
 
 type QuoteMatcher struct {
-	quoteTypes []QuoteType
+	quoteTypes     []QuoteType
 	forIdentifiers bool
 }
 
