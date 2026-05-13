@@ -110,13 +110,14 @@ func (c *tokenClassifier) Classify(tokens []Token) []Token {
 	if len(tokens) == 0 {
 		return tokens
 	}
-	tokens = mergePhrases(tokens, c.keywordPhrases)
-	tokens = mergePhrases(tokens, c.dataTypeWordPhrases)
-	tokens = mergePhrases(tokens, c.dataTypePhrases)
-	tokens = mergePhrases(tokens, c.clausePhrases)
-	tokens = mergePhrases(tokens, c.selectPhrases)
-	tokens = mergePhrases(tokens, c.setOpPhrases)
-	tokens = mergePhrases(tokens, c.joinPhrases)
+	scratch := make([]Token, 0, len(tokens))
+	tokens, scratch = mergePhrases(tokens, c.keywordPhrases, scratch)
+	tokens, scratch = mergePhrases(tokens, c.dataTypeWordPhrases, scratch)
+	tokens, scratch = mergePhrases(tokens, c.dataTypePhrases, scratch)
+	tokens, scratch = mergePhrases(tokens, c.clausePhrases, scratch)
+	tokens, scratch = mergePhrases(tokens, c.selectPhrases, scratch)
+	tokens, scratch = mergePhrases(tokens, c.setOpPhrases, scratch)
+	tokens, _ = mergePhrases(tokens, c.joinPhrases, scratch)
 
 	for i, tok := range tokens {
 		if tok.Type != TokenIdentifier {
@@ -198,11 +199,11 @@ func promoteToken(tok Token, tokenType TokenType) Token {
 	return tok
 }
 
-func mergePhrases(tokens []Token, index phraseIndex) []Token {
+func mergePhrases(tokens []Token, index phraseIndex, scratch []Token) ([]Token, []Token) {
 	if len(index) == 0 {
-		return tokens
+		return tokens, scratch
 	}
-	out := make([]Token, 0, len(tokens))
+	out := scratch[:0]
 	for i := 0; i < len(tokens); {
 		tok := tokens[i]
 		if tok.Type != TokenIdentifier {
@@ -225,7 +226,7 @@ func mergePhrases(tokens []Token, index phraseIndex) []Token {
 			i++
 		}
 	}
-	return out
+	return out, tokens[:0]
 }
 
 func matchPhrase(tokens []Token, start int, words []string) bool {

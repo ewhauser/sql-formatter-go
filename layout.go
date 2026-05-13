@@ -32,7 +32,7 @@ type LayoutWriter interface {
 }
 
 func NewLayout(indentation *Indentation) *Layout {
-	return &Layout{Indentation: indentation}
+	return &Layout{items: make([]LayoutItem, 0, 8), Indentation: indentation}
 }
 
 func (l *Layout) Add(items ...interface{}) {
