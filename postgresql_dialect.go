@@ -197,7 +197,6 @@ var postgresqlTabularOnelineClausesPhrases = []string{
 	"LOCK",
 	"MOVE",
 	"NOTIFY",
-	"OVERRIDING SYSTEM VALUE",
 	"PREPARE",
 	"PREPARE TRANSACTION",
 	"REASSIGN OWNED",
@@ -246,6 +245,7 @@ var postgresqlReservedKeywordPhrasesPhrases = []string{
 	"IS [NOT] DISTINCT FROM",
 	"NULLS {FIRST | LAST}",
 	"WITH ORDINALITY",
+	"OVERRIDING SYSTEM VALUE",
 }
 
 var postgresqlReservedDataTypePhrasesPhrases = []string{
@@ -334,18 +334,18 @@ var postgresqlOperators = []string{
 var PostgresqlDialect = DialectOptions{
 	Name: "postgresql",
 	TokenizerOptions: TokenizerOptions{
-		ReservedSelect: ExpandPhrases(postgresqlReservedSelectPhrases),
-		ReservedClauses: append(append([]string{}, ExpandPhrases(postgresqlReservedClausesPhrases)...), append(append([]string{}, ExpandPhrases(postgresqlStandardOnelineClausesPhrases)...), ExpandPhrases(postgresqlTabularOnelineClausesPhrases)...)...),
-		ReservedSetOperations: ExpandPhrases(postgresqlReservedSetOperationsPhrases),
-		ReservedJoins: ExpandPhrases(postgresqlReservedJoinsPhrases),
-		ReservedKeywordPhrases: ExpandPhrases(postgresqlReservedKeywordPhrasesPhrases),
+		ReservedSelect:          ExpandPhrases(postgresqlReservedSelectPhrases),
+		ReservedClauses:         append(append([]string{}, ExpandPhrases(postgresqlReservedClausesPhrases)...), append(append([]string{}, ExpandPhrases(postgresqlStandardOnelineClausesPhrases)...), ExpandPhrases(postgresqlTabularOnelineClausesPhrases)...)...),
+		ReservedSetOperations:   ExpandPhrases(postgresqlReservedSetOperationsPhrases),
+		ReservedJoins:           ExpandPhrases(postgresqlReservedJoinsPhrases),
+		ReservedKeywordPhrases:  ExpandPhrases(postgresqlReservedKeywordPhrasesPhrases),
 		ReservedDataTypePhrases: ExpandPhrases(postgresqlReservedDataTypePhrasesPhrases),
-		ReservedKeywords: postgresql.Keywords,
-		ReservedDataTypes: postgresql.DataTypes,
-		ReservedFunctionNames: postgresql.Functions,
-		NestedBlockComments: true,
-		ExtraParens: []string{"[]"},
-		UnderscoresInNumbers: true,
+		ReservedKeywords:        postgresql.Keywords,
+		ReservedDataTypes:       postgresql.DataTypes,
+		ReservedFunctionNames:   postgresql.Functions,
+		NestedBlockComments:     true,
+		ExtraParens:             []string{"[]"},
+		UnderscoresInNumbers:    true,
 		StringTypes: []QuoteType{
 			PlainQuoteType("$$"),
 			PrefixedQuoteType{Quote: PlainQuoteType("''-qq"), Prefixes: []string{"U&"}},
@@ -355,14 +355,14 @@ var PostgresqlDialect = DialectOptions{
 		IdentTypes: []QuoteType{
 			PrefixedQuoteType{Quote: PlainQuoteType("\"\"-qq"), Prefixes: []string{"U&"}},
 		},
-		IdentChars: &IdentChars{Rest: "$"},
-		ParamTypes: &ParamTypes{Numbered: []string{"$"}},
-		Operators: postgresqlOperators,
+		IdentChars:      &IdentChars{Rest: "$"},
+		ParamTypes:      &ParamTypes{Numbered: []string{"$"}},
+		Operators:       postgresqlOperators,
 		OperatorKeyword: true,
 	},
 	FormatOptions: DialectFormatOptions{
-		AlwaysDenseOperators: []string{"::", ":"},
-		OnelineClauses: append(append([]string{}, ExpandPhrases(postgresqlStandardOnelineClausesPhrases)...), ExpandPhrases(postgresqlTabularOnelineClausesPhrases)...),
+		AlwaysDenseOperators:  []string{"::", ":"},
+		OnelineClauses:        append(append([]string{}, ExpandPhrases(postgresqlStandardOnelineClausesPhrases)...), ExpandPhrases(postgresqlTabularOnelineClausesPhrases)...),
 		TabularOnelineClauses: ExpandPhrases(postgresqlTabularOnelineClausesPhrases),
 	},
 }

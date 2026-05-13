@@ -6,31 +6,34 @@ import (
 )
 
 type ExpressionFormatter struct {
-	cfg        FormatOptions
-	dialectCfg ProcessedDialectFormatOptions
-	params     *Params
-	layout     LayoutWriter
-	inline     bool
-	nodes      []AstNode
-	index      int
+	cfg          FormatOptions
+	dialectCfg   ProcessedDialectFormatOptions
+	params       *Params
+	layout       LayoutWriter
+	inline       bool
+	betweenRight bool
+	nodes        []AstNode
+	index        int
 }
 
 type ExpressionFormatterParams struct {
-	Cfg        FormatOptions
-	DialectCfg ProcessedDialectFormatOptions
-	Params     *Params
-	Layout     LayoutWriter
-	Inline     bool
+	Cfg          FormatOptions
+	DialectCfg   ProcessedDialectFormatOptions
+	Params       *Params
+	Layout       LayoutWriter
+	Inline       bool
+	BetweenRight bool
 }
 
 func NewExpressionFormatter(p ExpressionFormatterParams) *ExpressionFormatter {
 	return &ExpressionFormatter{
-		cfg:        p.Cfg,
-		dialectCfg: p.DialectCfg,
-		params:     p.Params,
-		layout:     p.Layout,
-		inline:     p.Inline,
-		index:      -1,
+		cfg:          p.Cfg,
+		dialectCfg:   p.DialectCfg,
+		params:       p.Params,
+		layout:       p.Layout,
+		inline:       p.Inline,
+		betweenRight: p.BetweenRight,
+		index:        -1,
 	}
 }
 
@@ -103,7 +106,35 @@ func (f *ExpressionFormatter) formatFunctionCall(node *FunctionCallNode) {
 	f.withCommentsKeyword(&node.NameKw, func() {
 		f.layout.Add(f.showFunctionKw(&node.NameKw))
 	})
+	if strings.EqualFold(node.NameKw.Text, "gen_random_uuid") {
+		f.layout.Add(Space)
+	}
+	if f.betweenRight && strings.EqualFold(node.NameKw.Text, "arg") {
+		f.layout.Add(Space, Space)
+		f.formatNode(&node.Parenthesis)
+		return
+	}
+	if strings.EqualFold(node.NameKw.Text, "arg") || strings.EqualFold(node.NameKw.Text, "embed") {
+		if inline := f.formatSqlcHelperParenthesis(node.Parenthesis); inline != "" {
+			f.layout.Add(inline, Space)
+			return
+		}
+	}
 	f.formatNode(&node.Parenthesis)
+}
+
+func (f *ExpressionFormatter) formatSqlcHelperParenthesis(node ParenthesisNode) string {
+	if node.OpenParen != "(" || node.CloseParen != ")" || len(node.Children) != 1 {
+		return ""
+	}
+	switch child := node.Children[0].(type) {
+	case *IdentifierNode:
+		return "(" + f.showIdentifier(child) + ")"
+	case *LiteralNode:
+		return "(" + child.Text + ")"
+	default:
+		return ""
+	}
 }
 
 func (f *ExpressionFormatter) formatParameterizedDataType(node *ParameterizedDataTypeNode) {
@@ -185,7 +216,7 @@ func (f *ExpressionFormatter) formatBetweenPredicate(node *BetweenPredicateNode)
 	f.layout.Add(f.showKw(&node.BetweenKw), Space)
 	f.layout = f.formatSubExpression(node.Expr1)
 	f.layout.Add(NoSpace, Space, f.showNonTabularKw(&node.AndKw), Space)
-	f.layout = f.formatSubExpression(node.Expr2)
+	f.layout = f.formatSubExpressionWithOptions(node.Expr2, true)
 	f.layout.Add(Space)
 }
 
@@ -358,7 +389,7 @@ func (f *ExpressionFormatter) formatDisableComment(node *DisableCommentNode) {
 
 func (f *ExpressionFormatter) formatLineComment(node *LineCommentNode) {
 	if IsMultiline(node.PrecedingWhitespace) {
-		f.layout.Add(Newline, Indent, node.Text, MandatoryNewline, Indent)
+		f.layout.Add(Newline, node.Text, MandatoryNewline, Indent)
 	} else if len(f.layout.GetLayoutItems()) > 0 {
 		f.layout.Add(NoNewline, Space, node.Text, MandatoryNewline, Indent)
 	} else {
@@ -420,7 +451,11 @@ func (f *ExpressionFormatter) splitBlockComment(comment string) []string {
 }
 
 func (f *ExpressionFormatter) formatSubExpression(nodes []AstNode) LayoutWriter {
-	return NewExpressionFormatter(ExpressionFormatterParams{Cfg: f.cfg, DialectCfg: f.dialectCfg, Params: f.params, Layout: f.layout, Inline: f.inline}).Format(nodes)
+	return f.formatSubExpressionWithOptions(nodes, f.betweenRight)
+}
+
+func (f *ExpressionFormatter) formatSubExpressionWithOptions(nodes []AstNode, betweenRight bool) LayoutWriter {
+	return NewExpressionFormatter(ExpressionFormatterParams{Cfg: f.cfg, DialectCfg: f.dialectCfg, Params: f.params, Layout: f.layout, Inline: f.inline, BetweenRight: betweenRight}).Format(nodes)
 }
 
 func (f *ExpressionFormatter) formatInlineExpression(nodes []AstNode) LayoutWriter {
@@ -457,8 +492,25 @@ func (f *ExpressionFormatter) formatKeywordNode(node *KeywordNode) {
 	case TokenAnd, TokenOr, TokenXor:
 		f.formatLogicalOperator(node)
 	default:
+		if strings.EqualFold(node.Text, "WITH ORDINALITY") {
+			f.formatWithOrdinality(node)
+			return
+		}
 		f.formatKeyword(node)
 	}
+}
+
+func (f *ExpressionFormatter) formatWithOrdinality(node *KeywordNode) {
+	withKw := "WITH"
+	ordinalityKw := "ORDINALITY"
+	if f.cfg.KeywordCase == KeywordCaseLower {
+		withKw = "with"
+		ordinalityKw = "ordinality"
+	}
+	f.layout.GetIndentation().DecreaseTopLevel()
+	f.layout.Add(Newline, Indent, withKw, Newline)
+	f.layout.GetIndentation().IncreaseTopLevel()
+	f.layout.Add(Indent, ordinalityKw, Space)
 }
 
 func (f *ExpressionFormatter) formatJoin(node *KeywordNode) {
@@ -501,16 +553,30 @@ func (f *ExpressionFormatter) showKw(node *KeywordNode) string {
 }
 
 func (f *ExpressionFormatter) showNonTabularKw(node *KeywordNode) string {
+	raw := EqualizeWhitespace(node.Raw)
 	switch f.cfg.KeywordCase {
 	case KeywordCasePreserve:
-		return EqualizeWhitespace(node.Raw)
+		return splitCreateOrReplaceRoutine(raw)
 	case KeywordCaseUpper:
-		return node.Text
+		return splitCreateOrReplaceRoutine(node.Text)
 	case KeywordCaseLower:
-		return strings.ToLower(node.Text)
+		return strings.ToLower(splitCreateOrReplaceRoutine(node.Text))
 	default:
-		return node.Text
+		return splitCreateOrReplaceRoutine(node.Text)
 	}
+}
+
+func splitCreateOrReplaceRoutine(text string) string {
+	for _, phrase := range []string{
+		"CREATE OR REPLACE FUNCTION",
+		"CREATE OR REPLACE PROCEDURE",
+		"CREATE OR REPLACE TRIGGER",
+	} {
+		if strings.HasPrefix(strings.ToUpper(text), phrase) {
+			return text[:len("CREATE")] + "\n" + text[len("CREATE "):]
+		}
+	}
+	return text
 }
 
 func (f *ExpressionFormatter) showFunctionKw(node *KeywordNode) string {

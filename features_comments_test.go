@@ -3,7 +3,7 @@ package sqlformatter
 import "testing"
 
 type commentsConfig struct {
-	HashComments       bool
+	HashComments        bool
 	DoubleSlashComments bool
 	NestedBlockComments bool
 }
@@ -28,7 +28,7 @@ func supportsComments(t *testing.T, format FormatFn, opts commentsConfig) {
 			   */
 			  *
 			FROM
-			  -- This is another comment
+			-- This is another comment
 			  MyTable -- One final comment
 			WHERE
 			  1 = 2;
@@ -175,12 +175,12 @@ func supportsComments(t *testing.T, format FormatFn, opts commentsConfig) {
       `)
 		expected := dedent(`
 			SELECT
-			  --comment1
+			--comment1
 			  a,
-			  --comment2
+			--comment2
 			  b
 			FROM
-			  --comment3
+			--comment3
 			  my_table;
 		`)
 		assertEqual(t, result, expected)
@@ -188,7 +188,7 @@ func supportsComments(t *testing.T, format FormatFn, opts commentsConfig) {
 
 	t.Run("recognizes line-comments with Windows line-endings", func(t *testing.T) {
 		result := format("SELECT * FROM\r\n-- line comment 1\r\nMyTable -- line comment 2\r\n")
-		expected := "SELECT\n  *\nFROM\n  -- line comment 1\n  MyTable -- line comment 2"
+		expected := "SELECT\n  *\nFROM\n-- line comment 1\n  MyTable -- line comment 2"
 		assertEqual(t, result, expected)
 	})
 
