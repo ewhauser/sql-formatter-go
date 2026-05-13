@@ -3,7 +3,6 @@ package sqlformatter
 func DisambiguateTokens(tokens []Token) []Token {
 	mapTokensInPlace(tokens, propertyNameKeywordToIdent)
 	mapTokensInPlace(tokens, funcNameToIdent)
-	mapTokensInPlace(tokens, clauseAfterJoinToIdent)
 	mapTokensInPlace(tokens, sqlcFunctionToReservedFunctionName)
 	mapTokensInPlace(tokens, dataTypeToParameterizedDataType)
 	mapTokensInPlace(tokens, identToArrayIdent)
@@ -47,19 +46,6 @@ func funcNameToIdent(token Token, i int, tokens []Token) Token {
 	return token
 }
 
-// clauseAfterJoinToIdent converts clause tokens to identifiers when they appear
-// right after a JOIN keyword. This handles cases like "LEFT JOIN comment ON ..."
-// where "comment" is a table name, not the start of "COMMENT ON" clause.
-func clauseAfterJoinToIdent(token Token, i int, tokens []Token) Token {
-	if token.Type == TokenReservedClause {
-		prev := prevNonCommentToken(tokens, i)
-		if prev.Type == TokenReservedJoin {
-			return Token{Type: TokenIdentifier, Raw: token.Raw, Text: token.Raw, Start: token.Start, PrecedingWhitespace: token.PrecedingWhitespace}
-		}
-	}
-	return token
-}
-
 // sqlcFunctionToReservedFunctionName converts identifiers to reserved function names
 // when they appear in the pattern `sqlc.identifier(`. This handles sqlc helper
 // functions like sqlc.arg(), sqlc.narg(), sqlc.embed(), etc.
@@ -87,7 +73,11 @@ func sqlcFunctionToReservedFunctionName(token Token, i int, tokens []Token) Toke
 	if sqlcToken.Type != TokenIdentifier || (sqlcToken.Text != "sqlc" && sqlcToken.Text != "SQLC") {
 		return token
 	}
-	// This is a sqlc function call - convert to reserved function name
+	if token.Text != "arg" && token.Text != "embed" {
+		return token
+	}
+	// sqlc.arg() and sqlc.embed() are normalized without a space before the
+	// parenthesis by sql-formatter's JavaScript PostgreSQL formatter.
 	return Token{Type: TokenReservedFunctionName, Raw: token.Raw, Text: token.Text, Start: token.Start, PrecedingWhitespace: token.PrecedingWhitespace}
 }
 
@@ -122,7 +112,7 @@ func identToArrayIdent(token Token, i int, tokens []Token) Token {
 }
 
 func dataTypeToArrayKeyword(token Token, i int, tokens []Token) Token {
-	if token.Type == TokenReservedDataType {
+	if token.Type == TokenReservedDataType || token.Type == TokenReservedDataTypePhrase {
 		next := nextNonCommentToken(tokens, i)
 		if next.Type != "" && isOpenBracket(next) {
 			token.Type = TokenArrayKeyword

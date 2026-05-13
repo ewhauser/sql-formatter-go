@@ -23,6 +23,19 @@ func supportsBetween(t *testing.T, format FormatFn) {
 		assertEqual(t, result, expected)
 	})
 
+	t.Run("preserves sqlc.arg spacing on BETWEEN right side", func(t *testing.T) {
+		result := format("SELECT * FROM foo WHERE business_date BETWEEN sqlc.arg('start')::date AND sqlc.arg('end')::date;")
+		expected := dedent(`
+			SELECT
+			  *
+			FROM
+			  foo
+			WHERE
+			  business_date BETWEEN sqlc.arg('start')::date AND sqlc.arg  ('end')::date;
+		`)
+		assertEqual(t, result, expected)
+	})
+
 	t.Run("supports complex expressions inside BETWEEN", func(t *testing.T) {
 		result := format("foo BETWEEN 1+2 AND 3+4")
 		assertEqual(t, result, "foo BETWEEN 1 + 2 AND 3  + 4")

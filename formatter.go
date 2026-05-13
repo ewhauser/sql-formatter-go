@@ -27,8 +27,24 @@ func (f *Formatter) formatAst(statements []*StatementNode) string {
 	for _, stmt := range statements {
 		parts = append(parts, f.formatStatement(stmt))
 	}
-	sep := strings.Repeat("\n", f.cfg.LinesBetweenQueries+1)
-	return strings.Join(parts, sep)
+	if len(parts) == 0 {
+		return ""
+	}
+	var out strings.Builder
+	out.WriteString(parts[0])
+	for i := 1; i < len(parts); i++ {
+		if startsWithLineComment(parts[i]) {
+			out.WriteString("\n")
+		} else {
+			out.WriteString(strings.Repeat("\n", f.cfg.LinesBetweenQueries+1))
+		}
+		out.WriteString(parts[i])
+	}
+	return out.String()
+}
+
+func startsWithLineComment(formatted string) bool {
+	return strings.HasPrefix(strings.TrimLeft(formatted, " \t"), "--")
 }
 
 func (f *Formatter) formatStatement(statement *StatementNode) string {

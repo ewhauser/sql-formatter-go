@@ -86,6 +86,25 @@ func TestPostgresqlFormatter(t *testing.T) {
 		assertEqual(t, result, expected)
 	})
 
+	t.Run("formats arrays of multi-word data types without space before brackets", func(t *testing.T) {
+		result := format("CREATE TABLE foo (x time without time zone[]);")
+		expected := "CREATE TABLE foo (x time without time zone[]);"
+		assertEqual(t, result, expected)
+	})
+
+	t.Run("formats WITH ORDINALITY after table functions", func(t *testing.T) {
+		result := format("SELECT * FROM unnest(sop.steps) WITH ORDINALITY AS u (step, idx);")
+		expected := dedent(`
+			SELECT
+			  *
+			FROM
+			  unnest(sop.steps)
+			WITH
+			  ORDINALITY AS u (step, idx);
+		`)
+		assertEqual(t, result, expected)
+	})
+
 	t.Run("formats FOR UPDATE clause", func(t *testing.T) {
 		result := format(`
         SELECT * FROM tbl FOR UPDATE;
@@ -126,7 +145,8 @@ func TestPostgresqlFormatter(t *testing.T) {
 	t.Run("supports OR REPLACE in CREATE FUNCTION", func(t *testing.T) {
 		result := format("CREATE OR REPLACE FUNCTION foo ();")
 		expected := dedent(`
-			CREATE OR REPLACE FUNCTION foo ();
+			CREATE
+			OR REPLACE FUNCTION foo ();
 		`)
 		assertEqual(t, result, expected)
 	})
@@ -139,13 +159,37 @@ func TestPostgresqlFormatter(t *testing.T) {
 
 	t.Run("supports OR REPLACE in CREATE PROCEDURE", func(t *testing.T) {
 		result := format("CREATE OR REPLACE PROCEDURE foo () LANGUAGE sql AS $$ BEGIN END $$;")
-		expected := dedent(`CREATE OR REPLACE PROCEDURE foo () LANGUAGE sql AS $$ BEGIN END $$;`)
+		expected := dedent(`
+			CREATE
+			OR REPLACE PROCEDURE foo () LANGUAGE sql AS $$ BEGIN END $$;
+		`)
+		assertEqual(t, result, expected)
+	})
+
+	t.Run("supports OR REPLACE in CREATE TRIGGER", func(t *testing.T) {
+		result := format("CREATE OR REPLACE TRIGGER foo BEFORE INSERT ON bar FOR EACH ROW EXECUTE FUNCTION baz ();")
+		expected := dedent(`
+			CREATE
+			OR REPLACE TRIGGER foo BEFORE INSERT ON bar FOR EACH ROW
+			EXECUTE FUNCTION baz ();
+		`)
 		assertEqual(t, result, expected)
 	})
 
 	t.Run("supports UUID type and functions", func(t *testing.T) {
 		result := format("CREATE TABLE foo (id uuid DEFAULT Gen_Random_Uuid());", FormatOptions{DataTypeCase: KeywordCaseUpper, FunctionCase: KeywordCaseLower})
-		expected := dedent(`CREATE TABLE foo (id UUID DEFAULT gen_random_uuid());`)
+		expected := dedent(`CREATE TABLE foo (id UUID DEFAULT gen_random_uuid ());`)
+		assertEqual(t, result, expected)
+	})
+
+	t.Run("keeps OVERRIDING SYSTEM VALUE with INSERT column list", func(t *testing.T) {
+		result := format("INSERT INTO patient (id, name) OVERRIDING SYSTEM VALUE VALUES (1, 'Jane');")
+		expected := dedent(`
+			INSERT INTO
+			  patient (id, name) OVERRIDING SYSTEM VALUE
+			VALUES
+			  (1, 'Jane');
+		`)
 		assertEqual(t, result, expected)
 	})
 

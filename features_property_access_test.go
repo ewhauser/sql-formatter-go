@@ -55,7 +55,7 @@ func TestPropertyAccessWithParenthesis(t *testing.T) {
 		assertEqual(t, result, expected)
 	})
 
-	t.Run("sqlc.narg function call has no space before parenthesis", func(t *testing.T) {
+	t.Run("sqlc.narg function call preserves space before parenthesis", func(t *testing.T) {
 		result := formatPostgres(t, "SELECT * FROM foo WHERE bar = sqlc.narg(baz);")
 		expected := dedent(`
 			SELECT
@@ -63,7 +63,7 @@ func TestPropertyAccessWithParenthesis(t *testing.T) {
 			FROM
 			  foo
 			WHERE
-			  bar = sqlc.narg(baz);
+			  bar = sqlc.narg (baz);
 		`)
 		assertEqual(t, result, expected)
 	})
@@ -75,6 +75,15 @@ func TestPropertyAccessWithParenthesis(t *testing.T) {
 			  sqlc.embed(foo)
 			FROM
 			  bar;
+		`)
+		assertEqual(t, result, expected)
+	})
+
+	t.Run("sqlc.embed keeps a long single identifier argument on one line", func(t *testing.T) {
+		result := formatPostgres(t, "SELECT sqlc.embed(patient_document_insight_clinical_scale_assessment);")
+		expected := dedent(`
+			SELECT
+			  sqlc.embed(patient_document_insight_clinical_scale_assessment);
 		`)
 		assertEqual(t, result, expected)
 	})
