@@ -1,8 +1,11 @@
 package sqlformatter
 
+import "strings"
+
 func DisambiguateTokens(tokens []Token) []Token {
 	mapTokensInPlace(tokens, propertyNameKeywordToIdent)
 	mapTokensInPlace(tokens, funcNameToIdent)
+	mapTokensInPlace(tokens, commentTableAfterJoinToIdent)
 	mapTokensInPlace(tokens, sqlcFunctionToReservedFunctionName)
 	mapTokensInPlace(tokens, dataTypeToParameterizedDataType)
 	mapTokensInPlace(tokens, identToArrayIdent)
@@ -44,6 +47,25 @@ func funcNameToIdent(token Token, i int, tokens []Token) Token {
 		}
 	}
 	return token
+}
+
+func commentTableAfterJoinToIdent(token Token, i int, tokens []Token) Token {
+	if !strings.EqualFold(token.Text, "COMMENT") && !strings.EqualFold(token.Text, "COMMENT ON") {
+		return token
+	}
+	prev := prevNonCommentToken(tokens, i)
+	if prev.Type != TokenReservedJoin {
+		return token
+	}
+	if strings.EqualFold(token.Text, "COMMENT") {
+		next := nextNonCommentToken(tokens, i)
+		if !strings.EqualFold(next.Text, "ON") {
+			return token
+		}
+	} else if !strings.Contains(strings.ToUpper(token.Raw), "COMMENT ON") {
+		return token
+	}
+	return Token{Type: TokenIdentifier, Raw: token.Raw, Text: token.Raw, Start: token.Start, PrecedingWhitespace: token.PrecedingWhitespace}
 }
 
 // sqlcFunctionToReservedFunctionName converts identifiers to reserved function names

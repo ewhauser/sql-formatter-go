@@ -83,6 +83,31 @@ func supportsJoin(t *testing.T, format FormatFn, opts ...joinOptions) {
 		assertEqual(t, result, expected)
 	})
 
+	t.Run("formats table named comment after JOIN", func(t *testing.T) {
+		result := format("SELECT * FROM task LEFT JOIN comment ON task.id = comment.task_id;")
+		expected := dedent(`
+			SELECT
+			  *
+			FROM
+			  task
+			  LEFT JOIN comment ON task.id = comment.task_id;
+		`)
+		assertEqual(t, result, expected)
+	})
+
+	t.Run("preserves keyword-like table name call after JOIN", func(t *testing.T) {
+		result := format("SELECT * FROM task LEFT JOIN call ON task.id = call.task_id;")
+		expected := dedent(`
+			SELECT
+			  *
+			FROM
+			  task
+			  LEFT JOIN
+			call ON task.id = call.task_id;
+		`)
+		assertEqual(t, result, expected)
+	})
+
 	if cfg.SupportsUsing {
 		t.Run("properly uppercases JOIN USING", func(t *testing.T) {
 			result := format("select * from customers join foo using (id);", FormatOptions{KeywordCase: KeywordCaseUpper})
