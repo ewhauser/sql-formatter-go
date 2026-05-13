@@ -7,10 +7,10 @@ import (
 )
 
 type joinOptions struct {
-	Without        []string
-	Additionally   []string
-	SupportsUsing  bool
-	SupportsApply  bool
+	Without       []string
+	Additionally  []string
+	SupportsUsing bool
+	SupportsApply bool
 }
 
 func supportsJoin(t *testing.T, format FormatFn, opts ...joinOptions) {
@@ -56,8 +56,8 @@ func supportsJoin(t *testing.T, format FormatFn, opts ...joinOptions) {
 		t.Run("supports "+join, func(t *testing.T) {
 			result := format(`
           SELECT * FROM customers
-          `+join+` orders ON customers.customer_id = orders.customer_id
-          `+join+` items ON items.id = orders.id;
+          ` + join + ` orders ON customers.customer_id = orders.customer_id
+          ` + join + ` items ON items.id = orders.id;
         `)
 			expected := dedent(`
 				SELECT

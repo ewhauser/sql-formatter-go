@@ -3,30 +3,30 @@ package sqlformatter
 type NodeType string
 
 const (
-	NodeStatement          NodeType = "statement"
-	NodeClause             NodeType = "clause"
-	NodeSetOperation       NodeType = "set_operation"
-	NodeFunctionCall       NodeType = "function_call"
+	NodeStatement             NodeType = "statement"
+	NodeClause                NodeType = "clause"
+	NodeSetOperation          NodeType = "set_operation"
+	NodeFunctionCall          NodeType = "function_call"
 	NodeParameterizedDataType NodeType = "parameterized_data_type"
-	NodeArraySubscript     NodeType = "array_subscript"
-	NodePropertyAccess     NodeType = "property_access"
-	NodeParenthesis        NodeType = "parenthesis"
-	NodeBetweenPredicate   NodeType = "between_predicate"
-	NodeCaseExpression     NodeType = "case_expression"
-	NodeCaseWhen           NodeType = "case_when"
-	NodeCaseElse           NodeType = "case_else"
-	NodeLimitClause        NodeType = "limit_clause"
-	NodeAllColumnsAsterisk NodeType = "all_columns_asterisk"
-	NodeLiteral            NodeType = "literal"
-	NodeIdentifier         NodeType = "identifier"
-	NodeKeyword            NodeType = "keyword"
-	NodeDataType           NodeType = "data_type"
-	NodeParameter          NodeType = "parameter"
-	NodeOperator           NodeType = "operator"
-	NodeComma              NodeType = "comma"
-	NodeLineComment        NodeType = "line_comment"
-	NodeBlockComment       NodeType = "block_comment"
-	NodeDisableComment     NodeType = "disable_comment"
+	NodeArraySubscript        NodeType = "array_subscript"
+	NodePropertyAccess        NodeType = "property_access"
+	NodeParenthesis           NodeType = "parenthesis"
+	NodeBetweenPredicate      NodeType = "between_predicate"
+	NodeCaseExpression        NodeType = "case_expression"
+	NodeCaseWhen              NodeType = "case_when"
+	NodeCaseElse              NodeType = "case_else"
+	NodeLimitClause           NodeType = "limit_clause"
+	NodeAllColumnsAsterisk    NodeType = "all_columns_asterisk"
+	NodeLiteral               NodeType = "literal"
+	NodeIdentifier            NodeType = "identifier"
+	NodeKeyword               NodeType = "keyword"
+	NodeDataType              NodeType = "data_type"
+	NodeParameter             NodeType = "parameter"
+	NodeOperator              NodeType = "operator"
+	NodeComma                 NodeType = "comma"
+	NodeLineComment           NodeType = "line_comment"
+	NodeBlockComment          NodeType = "block_comment"
+	NodeDisableComment        NodeType = "disable_comment"
 )
 
 type AstNode interface{}
@@ -45,36 +45,36 @@ type StatementNode struct {
 
 type ClauseNode struct {
 	BaseNode
-	Type    NodeType
-	NameKw  KeywordNode
+	Type     NodeType
+	NameKw   KeywordNode
 	Children []AstNode
 }
 
 type SetOperationNode struct {
 	BaseNode
-	Type    NodeType
-	NameKw  KeywordNode
+	Type     NodeType
+	NameKw   KeywordNode
 	Children []AstNode
 }
 
 type FunctionCallNode struct {
 	BaseNode
-	Type       NodeType
-	NameKw     KeywordNode
+	Type        NodeType
+	NameKw      KeywordNode
 	Parenthesis ParenthesisNode
 }
 
 type ParameterizedDataTypeNode struct {
 	BaseNode
-	Type      NodeType
-	DataType  DataTypeNode
+	Type        NodeType
+	DataType    DataTypeNode
 	Parenthesis ParenthesisNode
 }
 
 type ArraySubscriptNode struct {
 	BaseNode
-	Type       NodeType
-	Array      AstNode
+	Type        NodeType
+	Array       AstNode
 	Parenthesis ParenthesisNode
 }
 
@@ -88,9 +88,9 @@ type PropertyAccessNode struct {
 
 type ParenthesisNode struct {
 	BaseNode
-	Type      NodeType
-	Children  []AstNode
-	OpenParen string
+	Type       NodeType
+	Children   []AstNode
+	OpenParen  string
 	CloseParen string
 }
 
@@ -163,10 +163,10 @@ type DataTypeNode struct {
 
 type KeywordNode struct {
 	BaseNode
-	Type     NodeType
+	Type      NodeType
 	TokenType TokenType
-	Text     string
-	Raw      string
+	Text      string
+	Raw       string
 }
 
 type ParameterNode struct {
@@ -189,22 +189,22 @@ type CommaNode struct {
 
 type LineCommentNode struct {
 	BaseNode
-	Type              NodeType
-	Text              string
+	Type                NodeType
+	Text                string
 	PrecedingWhitespace string
 }
 
 type BlockCommentNode struct {
 	BaseNode
-	Type              NodeType
-	Text              string
+	Type                NodeType
+	Text                string
 	PrecedingWhitespace string
 }
 
 type DisableCommentNode struct {
 	BaseNode
-	Type              NodeType
-	Text              string
+	Type                NodeType
+	Text                string
 	PrecedingWhitespace string
 }
 

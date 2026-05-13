@@ -3,9 +3,9 @@ package sqlformatter
 import "testing"
 
 type createViewConfig struct {
-	OrReplace   bool
+	OrReplace    bool
 	Materialized bool
-	IfNotExists bool
+	IfNotExists  bool
 }
 
 func supportsCreateView(t *testing.T, format FormatFn, cfg createViewConfig) {

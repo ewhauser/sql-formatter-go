@@ -146,7 +146,7 @@ func supportsParams(t *testing.T, format FormatFn, params paramConfig) {
 			})
 		}
 
-		if containsString(params.Named, "$" ) {
+		if containsString(params.Named, "$") {
 			t.Run("recognizes $name placeholders", func(t *testing.T) {
 				result := format("SELECT $foo, $bar, $baz;")
 				expected := dedent(`

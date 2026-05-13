@@ -2,7 +2,7 @@ package sqlformatter
 
 import "fmt"
 
-type ConfigError struct{
+type ConfigError struct {
 	Message string
 }
 

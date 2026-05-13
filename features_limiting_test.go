@@ -3,10 +3,10 @@ package sqlformatter
 import "testing"
 
 type limitingConfig struct {
-	Limit     bool
-	Offset    bool
+	Limit      bool
+	Offset     bool
 	FetchFirst bool
-	FetchNext bool
+	FetchNext  bool
 }
 
 func supportsLimiting(t *testing.T, format FormatFn, types limitingConfig) {

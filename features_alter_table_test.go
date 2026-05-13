@@ -3,10 +3,10 @@ package sqlformatter
 import "testing"
 
 type alterTableConfig struct {
-	AddColumn   bool
-	DropColumn  bool
-	Modify      bool
-	RenameTo    bool
+	AddColumn    bool
+	DropColumn   bool
+	Modify       bool
+	RenameTo     bool
 	RenameColumn bool
 }
 

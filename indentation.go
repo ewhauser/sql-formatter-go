@@ -1,7 +1,7 @@
 package sqlformatter
 
 const (
-	indentTypeTopLevel  = "top-level"
+	indentTypeTopLevel   = "top-level"
 	indentTypeBlockLevel = "block-level"
 )
 

@@ -24,10 +24,10 @@ func (m *RegexMatcher) Match(input string, index int) (string, bool) {
 }
 
 type TokenRule struct {
-	Type TokenType
+	Type  TokenType
 	Regex Matcher
-	Text func(raw string) string
-	Key  func(raw string) string
+	Text  func(raw string) string
+	Key   func(raw string) string
 }
 
 type TokenizerEngine struct {
