@@ -7,10 +7,10 @@ import (
 )
 
 type joinOptions struct {
-	Without        []string
-	Additionally   []string
-	SupportsUsing  bool
-	SupportsApply  bool
+	Without       []string
+	Additionally  []string
+	SupportsUsing bool
+	SupportsApply bool
 }
 
 func supportsJoin(t *testing.T, format FormatFn, opts ...joinOptions) {
@@ -56,8 +56,8 @@ func supportsJoin(t *testing.T, format FormatFn, opts ...joinOptions) {
 		t.Run("supports "+join, func(t *testing.T) {
 			result := format(`
           SELECT * FROM customers
-          `+join+` orders ON customers.customer_id = orders.customer_id
-          `+join+` items ON items.id = orders.id;
+          ` + join + ` orders ON customers.customer_id = orders.customer_id
+          ` + join + ` items ON items.id = orders.id;
         `)
 			expected := dedent(`
 				SELECT
@@ -79,6 +79,31 @@ func supportsJoin(t *testing.T, format FormatFn, opts ...joinOptions) {
 			FROM
 			  customers
 			  JOIN foo ON foo.id = customers.id;
+		`)
+		assertEqual(t, result, expected)
+	})
+
+	t.Run("formats table named comment after JOIN", func(t *testing.T) {
+		result := format("SELECT * FROM task LEFT JOIN comment ON task.id = comment.task_id;")
+		expected := dedent(`
+			SELECT
+			  *
+			FROM
+			  task
+			  LEFT JOIN comment ON task.id = comment.task_id;
+		`)
+		assertEqual(t, result, expected)
+	})
+
+	t.Run("preserves keyword-like table name call after JOIN", func(t *testing.T) {
+		result := format("SELECT * FROM task LEFT JOIN call ON task.id = call.task_id;")
+		expected := dedent(`
+			SELECT
+			  *
+			FROM
+			  task
+			  LEFT JOIN
+			call ON task.id = call.task_id;
 		`)
 		assertEqual(t, result, expected)
 	})
